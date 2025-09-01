@@ -23,7 +23,6 @@ export default async function handler(req, res) {
       ],
     });
 
-    // Build clean JSON for frontend
     const result = {
       symbol,
       currentPrice: quote.price?.regularMarketPrice || null,
@@ -32,8 +31,11 @@ export default async function handler(req, res) {
       sharesOutstanding: quote.defaultKeyStatistics?.sharesOutstanding || null,
       freeCashflow: quote.financialData?.freeCashflow || null,
       eps: quote.defaultKeyStatistics?.trailingEps || null,
+      epsgrowth: quote.defaultKeyStatistics?.earningsQuarterlyGrowth || null,
       peRatio: quote.summaryDetail?.trailingPE || null,
+      roe: quote.financialData?.returnOnEquity || null,
       forwardPE: quote.summaryDetail?.forwardPE || null,
+      trailingPegRatio: quote.defaultKeyStatistics?.trailingPegRatio || null,
       bookValue: quote.defaultKeyStatistics?.bookValue || null,
       totalRevenue: quote.financialData?.totalRevenue || null,
       profitMargins: quote.financialData?.profitMargins || null,
@@ -48,3 +50,4 @@ export default async function handler(req, res) {
     res.status(500).json({ error: err.message });
   }
 }
+
