@@ -461,7 +461,6 @@ const companyNames = {
             const discountRate = 0.08 + (data.beta || 1) * 0.06; // CAPM-based discount rate
             
             let dcfValue = 0;
-            // 5-year projection
             for (let year = 1; year <= 5; year++) {
                 const projectedFCF = fcfPerShare * Math.pow(1 + growthRate, year);
                 dcfValue += projectedFCF / Math.pow(1 + discountRate, year);
@@ -475,34 +474,78 @@ const companyNames = {
             return dcfValue + terminalValue;
         }
 
-        // Enhanced P/E based valuation
         function calculatePEValue(data) {
-            const { eps, peRatio, currentPrice } = data;
+            const {trailingPE, forwardPE, epsGrowth, currentPrice, epsTTM, pegRatio = null} = data;
             
-            if (!eps || eps <= 0) return currentPrice * 0.9;
+            if (!trailingPE || !forwardPE || !epsGrowth || !epsTTM) {
+                return currentPrice * 0.9;}
             
-            // Use industry median P/E or conservative estimate
-            const fairPE = Math.min(25, Math.max(12, peRatio * 0.8)); // Conservative approach
-            return eps * fairPE;
-        }
-
-        // Enhanced asset-based valuation
-        function calculateAssetValue(data) {
-            const { bookValue, priceToSales, totalRevenue, sharesOutstanding } = data;
+            if (trailingPE <= 0 || forwardPE <= 0 || epsTTM <= 0) {
+                return currentPrice * 0.9;}
             
-            if (bookValue > 0) {
-                // For asset-heavy companies, use book value with premium
-                return bookValue * 1.1;
-            } else if (totalRevenue && sharesOutstanding) {
-                // For growth companies, use revenue multiple
-                const revenuePerShare = totalRevenue / sharesOutstanding;
-                const industryPSRatio = 3; // Conservative price-to-sales ratio
-                return revenuePerShare * industryPSRatio;
+            let calculatedPEG;
+            
+            if (pegRatio && pegRatio > 0) {calculatedPEG = pegRatio;} 
+            else {
+                const growthRatePercent = epsGrowth * 100;
+                calculatedPEG = trailingPE / growthRatePercent;
             }
             
-            return data.currentPrice * 0.8; // Fallback
+            const expectedGrowthRate = trailingPE / calculatedPEG;
+            
+            const growthBasedFairPE = expectedGrowthRate;
+            
+            const blendedPE = (0.4 * trailingPE) + (0.6 * forwardPE);
+            
+            const fairPE = (blendedPE + growthBasedFairPE) / 2;
+            
+            const boundedFairPE = Math.min(50, Math.max(8, fairPE));
+            
+            const fairValue = epsTTM * boundedFairPE;
+            
+            const peValue = fairValue * 0.8;
+            
+            return peValue;
+    }
+
+        function calculateAssetValue(data) {
+            const {
+                bookValue,
+                totalRevenue,
+                sharesOutstanding,
+                currentPrice,
+                trailingPE,
+                roe,
+                revenueGrowth = 0.1, // default 10%
+                discountRate = 0.1   // default 10%
+                } = data;
+            
+            if (!sharesOutstanding || sharesOutstanding <= 0) {
+                return currentPrice * 0.8; // fallback
+            }
+            
+            const bookPerShare = bookValue || 0;
+            const revenuePerShare = totalRevenue ? totalRevenue / sharesOutstanding : 0;
+            const eps = trailingPE;
+            
+            let assetValue = 0;
+            
+            if (bookPerShare > 0 && roe) {
+                assetValue = bookPerShare * (1 + roe);
+            } else if (revenuePerShare > 0) {
+                const projectedRevenue = revenuePerShare * Math.pow(1 + revenueGrowth, 5);
+                assetValue = projectedRevenue / Math.pow(1 + discountRate, 5);
+            } else if (eps > 0) {
+                assetValue = eps * 15;
+            } else {
+                assetValue = currentPrice * 0.8; // fallback
+            }
+            
+            return assetValue
+
         }
 
+        
         // Enhanced Dividend Discount Model
         function calculateDDMValue(data) {
             const { dividendRate, dividendYield, currentPrice, beta } = data;
@@ -664,6 +707,7 @@ const companyNames = {
     </script>
 </body>
 </html>
+
 
 
 
