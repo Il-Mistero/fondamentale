@@ -551,33 +551,45 @@ const companyNames = {
         }
 
         function calculateDCFValue(data) {
-            const { freeCashflow, sharesOutstanding, currentPrice } = data;
+            const { freeCashflow, sharesOutstanding, netdebt, eps, profitMargins, beta } = data;
+            
+            const growthRates = data.growthRates || [0.0516, 0.0435, 0.04, 0.035, 0.03]; // Tapering growth rates
+            const terminalGrowth = data.terminalGrowth || 0.025; // 2.5%
+            const discountRate = data.wacc || 0.0633; // Specific WACC for JNJ; fallback to provided or calculated
+            
             
             if (!freeCashflow || !sharesOutstanding) {
                 const growthRate = 0.05;
-                const discountRate = 0.1;
-                const projectedEPS = data.eps * Math.pow(1 + growthRate, 5);
-                const terminalValue = projectedEPS / (discountRate - 0.02);
+                const fallbackDiscountRate = 0.1;
+                const projectedEPS = eps * Math.pow(1 + growthRate, 5);
+                const terminalValue = projectedEPS / (fallbackDiscountRate - 0.02);
                 return terminalValue * 0.8;
             }
-
-            const fcfPerShare = freeCashflow / sharesOutstanding;
-            const growthRate = Math.max(0.02, Math.min(0.15, data.profitMargins || 0.05));
-            const discountRate = 0.08 + (data.beta || 1) * 0.06; // CAPM-based discount rate
             
-            let dcfValue = 0;
+            let currentFCF = freeCashflow;
+            let enterpriseValue = 0;
+            
             for (let year = 1; year <= 5; year++) {
-                const projectedFCF = fcfPerShare * Math.pow(1 + growthRate, year);
-                dcfValue += projectedFCF / Math.pow(1 + discountRate, year);
+                currentFCF *= (1 + growthRates[year - 1]);
+                const pv = currentFCF / Math.pow(1 + discountRate, year);
+                enterpriseValue += pv;
             }
+
+            const terminalFCF = currentFCF * (1 + terminalGrowth);
+            const terminalValue = terminalFCF / (discountRate - terminalGrowth);
+            const pvTerminalValue = terminalValue / Math.pow(1 + discountRate, 5);
             
-            // Terminal value
-            const terminalGrowth = 0.02;
-            const terminalFCF = fcfPerShare * Math.pow(1 + growthRate, 5) * (1 + terminalGrowth);
-            const terminalValue = (terminalFCF / (discountRate - terminalGrowth)) / Math.pow(1 + discountRate, 5);
             
-            return dcfValue + terminalValue;
+            enterpriseValue += pvTerminalValue;
+            
+            const equityValue = enterpriseValue - netdebt;
+            
+            const valuePerShare = equityValue / sharesOutstanding;
+            
+            return valuePerShare;
+
         }
+
 
         function calculatePEValue(data) {
             const {trailingPE, forwardPE, epsGrowth, currentPrice, epsTTM, pegRatio = null} = data;
@@ -812,6 +824,7 @@ const companyNames = {
     </script>
 </body>
 </html>
+
 
 
 
