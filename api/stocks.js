@@ -35,6 +35,7 @@ export default async function handler(req, res) {
       peRatio: quote.summaryDetail?.trailingPE || null,
       roe: quote.financialData?.returnOnEquity || null,
       forwardPE: quote.summaryDetail?.forwardPE || null,
+      netdebt: quote.financialData?.totalDebt || null,
       trailingPegRatio: quote.defaultKeyStatistics?.trailingPegRatio || null,
       bookValue: quote.defaultKeyStatistics?.bookValue || null,
       totalRevenue: quote.financialData?.totalRevenue || null,
@@ -50,4 +51,5 @@ export default async function handler(req, res) {
     res.status(500).json({ error: err.message });
   }
 }
+
 
